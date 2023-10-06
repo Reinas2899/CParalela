@@ -518,7 +518,7 @@ double Potential() {
 //   Uses the derivative of the Lennard-Jones potential to calculate
 //   the forces on each atom.  Then uses a = F/m to calculate the
 //   accelleration of each atom. 
-void computeAccelerations() {
+/*void computeAccelerations() {
     int i, j, k;
     double f, rSqd;
     double rij[3]; // position of i relative to j
@@ -547,6 +547,44 @@ void computeAccelerations() {
                 //  from F = ma, where m = 1 in natural units!
                 a[i][k] += rij[k] * f;
                 a[j][k] -= rij[k] * f;
+            }
+        }
+    }
+}*/
+
+void computeAccelerations() {
+    // Use local variables to store common constants
+    const double sigma7 = 128.0;
+    const double sigma4 = 24.0;
+
+    for (int i = 0; i < N; i++) {
+        // Initialize acceleration components to zero
+        for (int k = 0; k < 3; k++) {
+            a[i][k] = 0.0;
+        }
+    }
+
+    for (int i = 0; i < N - 1; i++) {
+        for (int j = i + 1; j < N; j++) {
+            double rij[3];
+            double rSqd = 0.0;
+
+            // Compute r^2 and r components
+            for (int k = 0; k < 3; k++) {
+                rij[k] = r[i][k] - r[j][k];
+                rSqd += rij[k] * rij[k];
+            }
+
+            // Compute force magnitude
+            double rSqdInv4 = 1.0 / (rSqd * rSqd);
+            double rSqdInv7 = rSqdInv4 / rSqd;
+            double f = sigma7 * rSqdInv7 - sigma4 * rSqdInv4;
+
+            // Update accelerations
+            for (int k = 0; k < 3; k++) {
+                double fij = f * rij[k];
+                a[i][k] += fij;
+                a[j][k] -= fij;
             }
         }
     }
