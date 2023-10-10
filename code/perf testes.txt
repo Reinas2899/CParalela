@@ -1,0 +1,31 @@
+original:
+      779244092374      instructions                     #    2,08  insn per cycle
+      374257543230      cycles
+
+     125,003141452 seconds time elapsed
+
+     104,220500000 seconds user
+       0,023991000 seconds sys
+otimizado so Potencial:
+
+      392964469965      instructions                     #    2,33  insn per cycle            
+      168334245557      cycles                                                                
+
+      64,476045899 seconds time elapsed
+
+      46,783957000 seconds user
+       0,003999000 seconds sys
+
+
+
+otimizado:       
+211177993493      instructions                     #    2,27  insn per cycle
+       92911751193      cycles
+
+      63,111683725 seconds time elapsed
+
+      25,981821000 seconds user
+       0,007998000 seconds sys
+
+
+

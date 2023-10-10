@@ -1,0 +1,22 @@
+Here is a text explanation of the changes made to vectorize the code and why:
+
+Removed unnecessary temporary arrays:
+
+    The previous version used temporary arrays a_i and a_j to store accelerations. But this is unnecessary overhead. We can vectorize the updates directly into the main acceleration array a.
+
+Vectorize updates directly into main array:
+
+    Instead of computing the force f and looping over each dimension k, we can directly vectorize the update equation:
+
+    a[i][0] += f rij[0]; a[i][1] += f rij[1]; a[i][2] += f * rij[2];
+
+    Same for particle j, just with a minus sign.
+
+    This allows the multiplication and addition to be done in a vectorized manner, improving performance.
+
+Declare loop variables in innermost scope:
+
+    The loop indices i, j, k are now declared inside the loops rather than globally. This limits their scope and lifetime to what is needed.
+
+Overall, these changes aim to improve the performance by removing unnecessary arrays, vectorizing the math operations into a SIMD-friendly form, and tightening variable scope. The result is cleaner and faster code without sacrificing readability. Let me know if any part needs more explanation!
+

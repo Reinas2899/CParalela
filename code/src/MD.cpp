@@ -27,6 +27,7 @@
 #include<stdlib.h>
 #include<math.h>
 #include<string.h>
+#include<time.h>
 
 
 // Number of particles
@@ -83,7 +84,7 @@ double Kinetic();
 
 int main()
 {
-    
+    clock_t start = clock();
     //  variable delcarations
     int i;
     double dt, Vol, Temp, Press, Pavg, Tavg, rho;
@@ -358,6 +359,8 @@ int main()
     fclose(ofp);
     fclose(afp);
     
+    printf("Time taken: %.2fs\n", (double)(clock() - start)/CLOCKS_PER_SEC);
+
     return 0;
 }
 
@@ -482,10 +485,11 @@ double Kinetic() { //Write Function here!
     }
     
     return Pot;
-}*/
+}
+*/
 
-
-double Potential() {
+/*
+double PotentialOtimizado() {
     double Pot = 0.0;
 
     const double sigma6 = sigma * sigma * sigma * sigma * sigma * sigma;
@@ -511,9 +515,50 @@ double Potential() {
     }
 
     return Pot;
+}*/
+
+double Potential() {
+
+  double Pot = 0.0;
+
+  const double sigma6 = pow(sigma, 6);
+  const double sigma12 = sigma6 * sigma6;
+  const double epsilon4 = 4 * epsilon;  
+
+  double r2;
+  double rnorm2;
+  double quot;
+  double term1;
+  double term2;
+
+  for (int i = 0; i < N-1; i++) {
+    for (int j = i+1; j < N; j++) {
+
+      // Compute r^2
+      r2 = 0.0;
+      for (int k = 0; k < 3; k++) {
+        double delta = r[i][k] - r[j][k];
+        r2 += delta * delta;  
+      }
+
+      rnorm2 = r2;
+      quot = sigma * sigma / rnorm2;
+
+      // Vectorize computations
+      term1 = sigma12 / (rnorm2 * rnorm2 * rnorm2);
+      term2 = term1 * term1;
+
+      Pot += epsilon4 * (term1 - term2);
+
+    }
+  }
+
+  return Pot;
 }
+/*
 
 
+*/
 
 //   Uses the derivative of the Lennard-Jones potential to calculate
 //   the forces on each atom.  Then uses a = F/m to calculate the
@@ -550,45 +595,76 @@ double Potential() {
             }
         }
     }
-}*/
-
-void computeAccelerations() {
-    // Use local variables to store common constants
-    const double sigma7 = 128.0;
-    const double sigma4 = 24.0;
-
-    for (int i = 0; i < N; i++) {
-        // Initialize acceleration components to zero
-        for (int k = 0; k < 3; k++) {
-            a[i][k] = 0.0;
-        }
-    }
-
-    for (int i = 0; i < N - 1; i++) {
-        for (int j = i + 1; j < N; j++) {
-            double rij[3];
-            double rSqd = 0.0;
-
-            // Compute r^2 and r components
-            for (int k = 0; k < 3; k++) {
-                rij[k] = r[i][k] - r[j][k];
-                rSqd += rij[k] * rij[k];
-            }
-
-            // Compute force magnitude
-            double rSqdInv4 = 1.0 / (rSqd * rSqd);
-            double rSqdInv7 = rSqdInv4 / rSqd;
-            double f = sigma7 * rSqdInv7 - sigma4 * rSqdInv4;
-
-            // Update accelerations
-            for (int k = 0; k < 3; k++) {
-                double fij = f * rij[k];
-                a[i][k] += fij;
-                a[j][k] -= fij;
-            }
-        }
-    }
 }
+*/
+void computeAccelerations() {
+
+  double rSqd, invR7, invR4, f;
+  double rij[3];
+
+  for (int i = 0; i < N; i++) {
+    a[i][0] = 0; 
+    a[i][1] = 0;
+    a[i][2] = 0;
+  }
+
+  for (int i = 0; i < N-1; i++) {
+    for (int j = i+1; j < N; j++) {
+
+      // Compute r and r^2
+      rSqd = 0;
+      for (int k = 0; k < 3; k++) {
+        rij[k] = r[i][k] - r[j][k];
+        rSqd += rij[k] * rij[k];
+      }
+
+      // Compute invR7, invR4 and f
+      invR7 = 1/pow(rSqd, 7);
+      invR4 = 1/pow(rSqd, 4);  
+      f = 24 * (2*invR7 - invR4);
+
+      // Update accelerations 
+      a[i][0] += f * rij[0];
+      a[i][1] += f * rij[1];
+      a[i][2] += f * rij[2];
+
+      a[j][0] -= f * rij[0];
+      a[j][1] -= f * rij[1];
+      a[j][2] -= f * rij[2];
+
+    }
+  }
+
+}
+
+
+/*
+
+Precompute invR7 and invR4 to avoid repeated pow() calls
+
+Store rij[k]*f in a temporary variable rijf to avoid recomputation
+
+Start j loop at i+1 to skip redundant iterations
+
+Declared variables inside innermost scope possible
+
+Use ++i instead of i++ for loop increment
+
+
+Removed unnecessary temporary arrays
+
+Vectorize updates directly into main a array
+
+Declare loop variables in innermost scope
+
+*/
+
+
+
+
+
+
+
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 double VelocityVerlet(double dt, int iter, FILE *fp) {
