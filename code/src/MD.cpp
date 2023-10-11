@@ -459,137 +459,124 @@ double Kinetic() { //Write Function here!
 }
 
 
-// Function to calculate the potential energy of the system
-/*double Potential() {
-    double quot, r2, rnorm, term1, term2, Pot;
-    int i, j, k;
-    
-    Pot=0.;
-    for (i=0; i<N; i++) {
-        for (j=0; j<N; j++) {
-            
-            if (j!=i) {
-                r2=0.;
-                for (k=0; k<3; k++) {
-                    r2 += (r[i][k]-r[j][k])*(r[i][k]-r[j][k]);
-                }
-                rnorm=sqrt(r2);
-                quot=sigma/rnorm;
-                term1 = pow(quot,12.);
-                term2 = pow(quot,6.);
-                
-                Pot += 4*epsilon*(term1 - term2);
-                
-            }
-        }
-    }
-    
-    return Pot;
-}
-*/
 
 /*
-double PotentialOtimizado() {
-    double Pot = 0.0;
+OTIMIZAÇAO COM CHAT GPT V.1
+*/
 
-    const double sigma6 = sigma * sigma * sigma * sigma * sigma * sigma;
-    const double sigma12 = sigma6 * sigma6;
-    const double epsilon4 = 4 * epsilon;
-
-    for (int i = 0; i < N; i++) {
-        for (int j = i + 1; j < N; j++) { // Avoid redundant calculations
-            double r2 = 0.0;
-
-            for (int k = 0; k < 3; k++) {
-                double delta = r[i][k] - r[j][k];
-                r2 += delta * delta;
-            }
-
-            const double rnorm2 = r2;
-            const double quot = sigma * sigma / rnorm2;
-            const double term1 = sigma12 / (rnorm2 * rnorm2 * rnorm2);
-            const double term2 = term1 * term1;
-
-            Pot += epsilon4 * (term1 - term2);
-        }
-    }
-
-    return Pot;
-}*/
-
+// Function to calculate the potential energy of the system
 double Potential() {
+  double r2, rnorm, quot, term1, term2, Pot;
+  int i, j, k;
 
-  double Pot = 0.0;
-
-  const double sigma6 = pow(sigma, 6);
-  const double sigma12 = sigma6 * sigma6;
-  const double epsilon4 = 4 * epsilon;  
-
-  double r2;
-  double rnorm2;
-  double quot;
-  double term1;
-  double term2;
-
-  for (int i = 0; i < N-1; i++) {
-    for (int j = i+1; j < N; j++) {
-
-      // Compute r^2
-      r2 = 0.0;
-      for (int k = 0; k < 3; k++) {
-        double delta = r[i][k] - r[j][k];
-        r2 += delta * delta;  
+  Pot = 0.;
+  for (i = 0; i < N-1; i++) {
+    for (j = i+1; j < N; j++) {
+      r2 = 0.;
+      for (k = 0; k < 3; k++) {
+        r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
       }
-
-      rnorm2 = r2;
-      quot = sigma * sigma / rnorm2;
-
-      // Vectorize computations
-      term1 = sigma12 / (rnorm2 * rnorm2 * rnorm2);
-      term2 = term1 * term1;
-
-      Pot += epsilon4 * (term1 - term2);
-
+      rnorm = r2;
+      for (int n = 0; n < 5; n++) {
+        rnorm *= r2;  
+      }
+      quot = sigma / rnorm;
+      term1 = quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot; 
+      term2 = quot * quot * quot * quot * quot * quot;
+      Pot += 4 * epsilon * (term1 - term2);
     }
   }
-
   return Pot;
 }
+
+// Uses the derivative of the Lennard-Jones potential to calculate
+// the forces on each atom. Then uses a = F/m to calculate the
+// acceleration of each atom.
+void computeAccelerations() {
+  int i, j, k;
+  double f, rSqd, rij[3];
+  
+  for (i = 0; i < N; i++) {
+    for (k = 0; k < 3; k++) {
+      a[i][k] = 0; 
+    }
+  }
+  
+  for (i = 0; i < N-1; i++) {
+    for (j = i+1; j < N; j++) {
+      rSqd = 0;
+      for (k = 0; k < 3; k++) {
+        rij[k] = r[i][k] - r[j][k];
+        rSqd += rij[k] * rij[k];
+      }
+      
+      double rSqd7 = rSqd * rSqd * rSqd * rSqd * rSqd * rSqd * rSqd;
+      double rSqd4 = rSqd * rSqd * rSqd * rSqd;
+      f = 24 * (2 / rSqd7 - 1 / rSqd4);
+      
+      for (k = 0; k < 3; k++) {
+        a[i][k] += rij[k] * f;
+        a[j][k] -= rij[k] * f;
+      }
+    }
+  }
+}
+
+
 /*
-
-
+OTIMIZAÇAO COM CHAT GPT V.2
 */
-
-//   Uses the derivative of the Lennard-Jones potential to calculate
-//   the forces on each atom.  Then uses a = F/m to calculate the
-//   accelleration of each atom. 
-/*void computeAccelerations() {
+/*
+// Optimized Potential function
+double Potential() {
+    double r2, term1, term2, Pot;
     int i, j, k;
-    double f, rSqd;
-    double rij[3]; // position of i relative to j
-    
-    
-    for (i = 0; i < N; i++) {  // set all accelerations to zero
+    const double sigma6 = pow(sigma, 6);
+    const double sigma12 = sigma6 * sigma6;
+
+    Pot = 0.;
+    for (i = 0; i < N-1; i++) {
+        for (j = i+1; j < N; j++) {
+            r2 = 0.;
+            for (k = 0; k < 3; k++) {
+                r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
+            }
+
+            // Avoid sqrt computation by using r^2 directly
+            term1 = sigma12 / pow(r2, 6);
+            term2 = sigma6 / pow(r2, 3);
+            Pot += 4 * epsilon * (term1 - term2);
+        }
+    }
+    return Pot;
+}
+
+// Optimized computeAccelerations function
+void computeAccelerations() {
+    int i, j, k;
+    double f, rSqd, rij[3];  // position of i relative to j
+
+    // Zero accelerations
+    for (i = 0; i < N; i++) {
         for (k = 0; k < 3; k++) {
             a[i][k] = 0;
         }
     }
-    for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
+
+    for (i = 0; i < N-1; i++) {
         for (j = i+1; j < N; j++) {
-            // initialize r^2 to zero
             rSqd = 0;
-            
             for (k = 0; k < 3; k++) {
-                //  component-by-componenent position of i relative to j
                 rij[k] = r[i][k] - r[j][k];
-                //  sum of squares of the components
                 rSqd += rij[k] * rij[k];
             }
-            
-            //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
-            f = 24 * (2 * pow(rSqd, -7) - pow(rSqd, -4));
+
+            // Use r^2 directly to avoid unnecessary math functions
+            double r2inv = 1.0 / rSqd;
+            double r6inv = r2inv * r2inv * r2inv;
+            f = 24.0 * r6inv * (2.0 * r6inv * r6inv - 1.0) * r2inv;
+
             for (k = 0; k < 3; k++) {
-                //  from F = ma, where m = 1 in natural units!
                 a[i][k] += rij[k] * f;
                 a[j][k] -= rij[k] * f;
             }
@@ -597,70 +584,6 @@ double Potential() {
     }
 }
 */
-void computeAccelerations() {
-
-  double rSqd, invR7, invR4, f;
-  double rij[3];
-
-  for (int i = 0; i < N; i++) {
-    a[i][0] = 0; 
-    a[i][1] = 0;
-    a[i][2] = 0;
-  }
-
-  for (int i = 0; i < N-1; i++) {
-    for (int j = i+1; j < N; j++) {
-
-      // Compute r and r^2
-      rSqd = 0;
-      for (int k = 0; k < 3; k++) {
-        rij[k] = r[i][k] - r[j][k];
-        rSqd += rij[k] * rij[k];
-      }
-
-      // Compute invR7, invR4 and f
-      invR7 = 1/pow(rSqd, 7);
-      invR4 = 1/pow(rSqd, 4);  
-      f = 24 * (2*invR7 - invR4);
-
-      // Update accelerations 
-      a[i][0] += f * rij[0];
-      a[i][1] += f * rij[1];
-      a[i][2] += f * rij[2];
-
-      a[j][0] -= f * rij[0];
-      a[j][1] -= f * rij[1];
-      a[j][2] -= f * rij[2];
-
-    }
-  }
-
-}
-
-
-/*
-
-Precompute invR7 and invR4 to avoid repeated pow() calls
-
-Store rij[k]*f in a temporary variable rijf to avoid recomputation
-
-Start j loop at i+1 to skip redundant iterations
-
-Declared variables inside innermost scope possible
-
-Use ++i instead of i++ for loop increment
-
-
-Removed unnecessary temporary arrays
-
-Vectorize updates directly into main a array
-
-Declare loop variables in innermost scope
-
-*/
-
-
-
 
 
 
