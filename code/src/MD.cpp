@@ -541,7 +541,7 @@ Código otimizado com a remoção de ciclos 'for' removendo assim várias
 intruções de 'JUMP'
 ##############################################################################################################################################
 */
-/*
+
 // Function to calculate the potential energy of the system
 double Potential() {
   double r2, rnorm, quot, term1, term2, Pot;
@@ -556,19 +556,12 @@ double Potential() {
         r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
       }
       
-
       r2 += (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]);
       r2 += (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]);
       r2 += (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
 
       rnorm = r2;
-
-      /*
-      for (int n = 0; n < 5; n++) {
-        rnorm *= r2;  
-      }
       
-
       rnorm = r2 * r2 * r2 * r2 * r2; 
 
       quot = sigma / rnorm;
@@ -588,12 +581,6 @@ void computeAccelerations() {
   double f, rSqd, rij[3];
   
   for (i = 0; i < N; i++) {
-    
-    /*
-    for (k = 0; k < 3; k++) {
-      a[i][k] = 0; 
-    }
-    
 
     a[i][0] = 0;
     a[i][1] = 0;
@@ -603,13 +590,6 @@ void computeAccelerations() {
   for (i = 0; i < N-1; i++) {
     for (j = i+1; j < N; j++) {
       rSqd = 0;
-
-      /*
-      for (k = 0; k < 3; k++) {
-        rij[k] = r[i][k] - r[j][k];
-        rSqd += rij[k] * rij[k];
-      }
-      
 
       rij[0] = r[i][0] - r[j][0];
       rSqd += rij[0] * rij[0];
@@ -624,12 +604,6 @@ void computeAccelerations() {
       double rSqd4 = rSqd * rSqd * rSqd * rSqd;
       f = 24 * (2 / rSqd7 - 1 / rSqd4);
       
-      /*
-      for (k = 0; k < 3; k++) {
-        a[i][k] += rij[k] * f;
-        a[j][k] -= rij[k] * f;
-      }
-      
 
       a[i][0] += rij[0] * f;
       a[j][0] -= rij[0] * f;
@@ -643,7 +617,7 @@ void computeAccelerations() {
     }
   }
 }
-*/
+
 
 /*
 ##############################################################################################################################################
@@ -653,7 +627,7 @@ intruções de 'JUMP'
 Incrementação por blocos
 ##############################################################################################################################################
 */
-
+/*
 // Function to calculate the potential energy of the system
 double Potential() {
   double r2, rnorm, quot, term1, term2, Pot;
