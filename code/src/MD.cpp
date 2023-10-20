@@ -548,26 +548,24 @@ double Potential() {
   int i, j, k;
 
   Pot = 0;
-  for (i = 0; i < N-1; i+=3) {
-    for (j = i+1; j < N/2; j++) {
+  for (i = 0; i < N; i++) {
+    for (j = 0; j < N; j++) {
       r2 = 0;
     
-      for (k = 0; k < 3; k++) {
-        r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
-      }
-      
+     if(j!=i){
       r2 += (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]);
       r2 += (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]);
       r2 += (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
 
-      rnorm = r2;
+      rnorm=sqrt(r2);
       
-      rnorm = r2 * r2 * r2 * r2 * r2; 
+      
 
       quot = sigma / rnorm;
       term1 = quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot; 
       term2 = quot * quot * quot * quot * quot * quot;
       Pot += 4 * epsilon * (term1 - term2);
+      }
     }
   }
   return Pot;
@@ -576,47 +574,7 @@ double Potential() {
 // Uses the derivative of the Lennard-Jones potential to calculate
 // the forces on each atom. Then uses a = F/m to calculate the
 // acceleration of each atom.
-void computeAccelerations() {
-  int i, j, k;
-  double f, rSqd, rij[3];
-  
-  for (i = 0; i < N; i++) {
 
-    a[i][0] = 0;
-    a[i][1] = 0;
-    a[i][2] = 0;
-  }
-  
-  for (i = 0; i < N-1; i++) {
-    for (j = i+1; j < N; j++) {
-      rSqd = 0;
-
-      rij[0] = r[i][0] - r[j][0];
-      rSqd += rij[0] * rij[0];
-
-      rij[1] = r[i][1] - r[j][1];
-      rSqd += rij[1] * rij[1];
-
-      rij[2] = r[i][2] - r[j][2];
-      rSqd += rij[2] * rij[2];
-      
-      double rSqd7 = rSqd * rSqd * rSqd * rSqd * rSqd * rSqd * rSqd;
-      double rSqd4 = rSqd * rSqd * rSqd * rSqd;
-      f = 24 * (2 / rSqd7 - 1 / rSqd4);
-      
-
-      a[i][0] += rij[0] * f;
-      a[j][0] -= rij[0] * f;
-
-      a[i][1] += rij[1] * f;
-      a[j][1] -= rij[1] * f;
-
-      a[i][2] += rij[2] * f;
-      a[j][2] -= rij[2] * f;
-
-    }
-  }
-}
 
 
 /*
@@ -668,7 +626,7 @@ double Potential() {
     }
   }
   return Pot;
-}
+}*/
 
 // Uses the derivative of the Lennard-Jones potential to calculate
 // the forces on each atom. Then uses a = F/m to calculate the
@@ -696,9 +654,10 @@ void computeAccelerations() {
       rij[2] = r[i][2] - r[j][2];
       rSqd += rij[2] * rij[2];
       
-      double rSqd7 = rSqd * rSqd * rSqd * rSqd * rSqd * rSqd * rSqd;
-      double rSqd4 = rSqd * rSqd * rSqd * rSqd;
-      f = 24 * (2 / rSqd7 - 1 / rSqd4);
+    double invrSqd = 1/rSqd;
+    double invrSqd3 = invrSqd * invrSqd * invrSqd;
+      
+    f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
       
 
       a[i][0] += rij[0] * f;
