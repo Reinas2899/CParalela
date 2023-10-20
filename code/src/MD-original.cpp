@@ -358,7 +358,7 @@ int main()
     fclose(tfp);
     fclose(ofp);
     fclose(afp);
-    
+
     printf("Time taken: %.2fs\n", (double)(clock() - start)/CLOCKS_PER_SEC);
 
     return 0;
@@ -459,14 +459,6 @@ double Kinetic() { //Write Function here!
 }
 
 
-/*
-##############################################################################################################################################
-ORIGINAL
-Código original sem otimizações
-Tempo no PC pessoal = 7,07 seg
-Tempo no cluster Search = 14,26 seg e CPI=0,9
-##############################################################################################################################################
-/*
 // Function to calculate the potential energy of the system
 double Potential() {
     double quot, r2, rnorm, term1, term2, Pot;
@@ -494,6 +486,8 @@ double Potential() {
     
     return Pot;
 }
+
+
 
 //   Uses the derivative of the Lennard-Jones potential to calculate
 //   the forces on each atom.  Then uses a = F/m to calculate the
@@ -531,237 +525,6 @@ void computeAccelerations() {
         }
     }
 }
-
-*/
-
-
-/*
-##############################################################################################################################################
-OTIMIZAÇAO - V.1
-Tempo no PC pessoal = 3,88 seg
-Tempo no cluster Search = 6,65 seg e CPI=0,6
-##############################################################################################################################################
-*/
-
-// Function to calculate the potential energy of the system
-double Potential() {
-    double quot, r2, term1, term2, Pot, diferenca;
-    int i, j, k;
-
-    // em vez de estar sempre a multiplicar 4*epsilon em cada iteração do ciclo, multiplica-se logo aqui
-    double quatro_vezes_epsilon = 4.0 * epsilon;
-
-    Pot=0.;
-
-    for (i = 0; i <= N-1; i++) {
-
-        // ignoramos as posições da matriz que ficam antes do ponto onde acontece j==i
-        // os valores de output manteêm-se e eliminamos o if
-        for (j = i+1; j <= N-1; j++) {
-            r2 = 0.0;
-            
-            for (k = 0; k < 3; k++) {
-
-                // separar esta conta gigante em duas partes
-                // r2 += (r[i][k]-r[j][k])*(r[i][k]-r[j][k]);
-
-                diferenca = r[i][k] - r[j][k];
-                r2 += diferenca * diferenca;
-            }
-
-            quot = sigma/r2;
-
-            //term1 = quot * quot * quot * quot * quot * quot;
-            //term2 = quot * quot * quot
-
-            term2 = quot * quot * quot;
-            term1 = term2 * term2;
-            
-            Pot += ( (quatro_vezes_epsilon * (term1 - term2)) * 2.0);
-                  
-        }
-    }
-
-    return Pot;
-}
-
-// Uses the derivative of the Lennard-Jones potential to calculate
-// the forces on each atom. Then uses a = F/m to calculate the
-// acceleration of each atom.
-void computeAccelerations() {
-  int i, j; //k;
-  double f, rSqd, rij[3];
-
-  // Nesta função notamos que ao descontruir ciclos 'for' de tamanho conhecido (i.e k<3) melhorou o tempo de execução
-  
-  for (i = 0; i < N; i++) {
-    a[i][0] = 0;
-    a[i][1] = 0;
-    a[i][2] = 0;
-  }
-  
-  for (i = 0; i < N-1; i++) {
-    for (j = i+1; j < N; j++) {
-      rSqd = 0;
-
-      rij[0] = r[i][0] - r[j][0];
-      rSqd += rij[0] * rij[0];
-
-      rij[1] = r[i][1] - r[j][1];
-      rSqd += rij[1] * rij[1];
-
-      rij[2] = r[i][2] - r[j][2];
-      rSqd += rij[2] * rij[2];
-      
-    double invrSqd = 1/rSqd;
-    double invrSqd3 = invrSqd * invrSqd * invrSqd;
-      
-    f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
-      
-
-      a[i][0] += rij[0] * f;
-      a[j][0] -= rij[0] * f;
-
-      a[i][1] += rij[1] * f;
-      a[j][1] -= rij[1] * f;
-
-      a[i][2] += rij[2] * f;
-      a[j][2] -= rij[2] * f;
-
-    }
-  }
-}
-
-
-/*
-##############################################################################################################################################
-OTIMIZAÇAO - V.2
-Código otimizado com a remoção de ciclos 'for' removendo assim várias 
-intruções de 'JUMP'
-Incrementação por blocos
-O output no terminal era igual mas os ficheiros gerados tinham resultados diferentes do esperado
-##############################################################################################################################################
-*/
-
-/*
-// Function to calculate the potential energy of the system
-double Potential() {
-  double r2, rnorm, quot, term1, term2, Pot;
-  int i, j, k;
-
-  Pot = 0;
-  for (i = 0; i < N; i+=4) {
-
-    for (j = 0; j < N; j++) {
-      r2 = 0;
-      
-
-      r2 += (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]);
-      r2 += (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]);
-      r2 += (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
-
-      r2 += (r[i+1][0] - r[j+1][0]) * (r[i+1][0] - r[j+1][0]);
-      r2 += (r[i+1][1] - r[j+1][1]) * (r[i+1][1] - r[j+1][1]);
-      r2 += (r[i+1][2] - r[j+1][2]) * (r[i+1][2] - r[j+1][2]);
-
-      r2 += (r[i+2][0] - r[j+2][0]) * (r[i+2][0] - r[j+2][0]);
-      r2 += (r[i+2][1] - r[j+2][1]) * (r[i+2][1] - r[j+2][1]);
-      r2 += (r[i+2][2] - r[j+2][2]) * (r[i+2][2] - r[j+2][2]);
-
-      r2 += (r[i+3][0] - r[j+3][0]) * (r[i+3][0] - r[j+3][0]);
-      r2 += (r[i+3][1] - r[j+3][1]) * (r[i+3][1] - r[j+3][1]);
-      r2 += (r[i+3][2] - r[j+3][2]) * (r[i+3][2] - r[j+3][2]);
-
-      rnorm = r2;
-      
-
-      rnorm = r2 * r2 * r2 * r2 * r2; 
-
-      quot = sigma / rnorm;
-      term1 = quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot; 
-      term2 = quot * quot * quot * quot * quot * quot;
-      Pot += 4 * epsilon * (term1 - term2);
-    }
-  }
-  return Pot;
-}
-
-
-void computeAccelerations() {
-    // igual a OTIMIZAÇAO - V.1
-}
-
-*/
-
-
-/*
-##############################################################################################################################################
-OTIMIZAÇAO - V.3
-Ótimo em tempo de execução
-Péssimo com os outputs
-##############################################################################################################################################
-
-// Optimized Potential function
-double Potential() {
-    double r2, term1, term2, Pot;
-    int i, j, k;
-    const double sigma6 = pow(sigma, 6);
-    const double sigma12 = sigma6 * sigma6;
-
-    Pot = 0.;
-    for (i = 0; i < N-1; i++) {
-        for (j = i+1; j < N; j++) {
-            r2 = 0.;
-            for (k = 0; k < 3; k++) {
-                r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
-            }
-
-            // Avoid sqrt computation by using r^2 directly
-            term1 = sigma12 / pow(r2, 6);
-            term2 = sigma6 / pow(r2, 3);
-            Pot += 4 * epsilon * (term1 - term2);
-        }
-    }
-    return Pot;
-}
-
-// Optimized computeAccelerations function
-void computeAccelerations() {
-    int i, j, k;
-    double f, rSqd, rij[3];  // position of i relative to j
-
-    // Zero accelerations
-    for (i = 0; i < N; i++) {
-        for (k = 0; k < 3; k++) {
-            a[i][k] = 0;
-        }
-    }
-
-    for (i = 0; i < N-1; i++) {
-        for (j = i+1; j < N; j++) {
-            rSqd = 0;
-            for (k = 0; k < 3; k++) {
-                rij[k] = r[i][k] - r[j][k];
-                rSqd += rij[k] * rij[k];
-            }
-
-            // Use r^2 directly to avoid unnecessary math functions
-            double r2inv = 1.0 / rSqd;
-            double r6inv = r2inv * r2inv * r2inv;
-            f = 24.0 * r6inv * (2.0 * r6inv * r6inv - 1.0) * r2inv;
-
-            for (k = 0; k < 3; k++) {
-                a[i][k] += rij[k] * f;
-                a[j][k] -= rij[k] * f;
-            }
-        }
-    }
-}
-*/
-
-
-
-
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 double VelocityVerlet(double dt, int iter, FILE *fp) {
