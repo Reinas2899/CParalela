@@ -476,7 +476,7 @@ double Potential() {
 
     Pot=0.;
 
-    #pragma omp parallel for private(j, k, r2, diferenca, quot, term1, term2) reduction(+:Pot)
+    #pragma omp parallel for reduction(+:Pot)
     for (i = 0; i <= N-1; i++) {
         for (j = i+1; j <= N-1; j++) {
             r2 = 0.0;
@@ -506,14 +506,16 @@ void computeAccelerations() {
     int i, j;
     double f, rSqd, rij[3];
 
-    #pragma omp parallel for private(j, f, rSqd, rij)
+    //#pragma omp parallel for private(j, f, rSqd, rij)
+    //#pragma omp parallel for reduction(+:i)
     for (i = 0; i < N; i++) {
         a[i][0] = 0;
         a[i][1] = 0;
         a[i][2] = 0;
     }
   
-    #pragma omp parallel for private(j, f, rSqd, rij)
+    //#pragma omp parallel for private(j, f, rSqd, rij)
+    #pragma omp parallel for reduction(+:rSqd)
     for (i = 0; i < N-1; i++) {
         for (j = i+1; j < N; j++) {
             rSqd = 0;
@@ -532,19 +534,13 @@ void computeAccelerations() {
       
             f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
 
-            #pragma omp atomic
             a[i][0] += rij[0] * f;
-            #pragma omp atomic
             a[j][0] -= rij[0] * f;
 
-            #pragma omp atomic
             a[i][1] += rij[1] * f;
-            #pragma omp atomic
             a[j][1] -= rij[1] * f;
 
-            #pragma omp atomic
             a[i][2] += rij[2] * f;
-            #pragma omp atomic
             a[j][2] -= rij[2] * f;
         }
     }
