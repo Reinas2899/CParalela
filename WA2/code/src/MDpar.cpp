@@ -481,7 +481,7 @@ double Potential() {
         for (j = i+1; j <= N-1; j++) {
             r2 = 0.0;
             
-            #pragma omp parallel for reduction(+:diferenca)
+            //#pragma omp parallel for reduction(+:diferenca)
             for (k = 0; k < 3; k++) {
                 diferenca = r[i][k] - r[j][k];
                 r2 += diferenca * diferenca;
