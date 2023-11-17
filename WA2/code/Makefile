@@ -1,6 +1,6 @@
 CC     = gcc
 SRC    = src/
-CFLAGS = -pg -Ofast -funroll-all-loops -ftree-vectorize -msse4
+CFLAGS = -pg -Ofast -fopenmp -funroll-all-loops -ftree-vectorize -msse4
 
 .DEFAULT_GOAL = all
 
