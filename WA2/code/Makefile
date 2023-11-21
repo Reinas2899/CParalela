@@ -22,4 +22,4 @@ runseq:
 
 runpar:
 	sbatch cp.sh
-
+	#sbatch runpar.sh
