@@ -21,4 +21,5 @@ runseq:
 	./MDseq.exe < inputdata.txt
 
 runpar:
-	./MDpar.exe < inputdata.txt
+	sbatch cp.sh
+

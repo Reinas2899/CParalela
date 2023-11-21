@@ -481,7 +481,7 @@ double Potential() {
         for (j = i+1; j <= N-1; j++) {
             r2 = 0.0;
             
-            //#pragma omp parallel for reduction(+:diferenca)
+            #pragma omp simd reduction(+:r2)
             for (k = 0; k < 3; k++) {
                 diferenca = r[i][k] - r[j][k];
                 r2 += diferenca * diferenca;
@@ -490,6 +490,7 @@ double Potential() {
             quot = sigma/r2;
             term2 = quot * quot * quot;
             term1 = term2 * term2;
+            
             
             Pot += ( (quatro_vezes_epsilon * (term1 - term2)) * 2.0);
         }
@@ -501,21 +502,19 @@ double Potential() {
 // Uses the derivative of the Lennard-Jones potential to calculate
 // the forces on each atom. Then uses a = F/m to calculate the
 // acceleration of each atom.
-#include <omp.h>
 
 void computeAccelerations() {
     int i, j;
     double f, rSqd, rij[3];
 
-    //#pragma omp parallel for private(j, f, rSqd, rij)
     for (i = 0; i < N; i++) {
         a[i][0] = 0;
         a[i][1] = 0;
         a[i][2] = 0;
     }
   
-    //#pragma omp parallel for private(j, f, rSqd, rij)
-    #pragma omp parallel for reduction(+:rSqd)
+    
+    #pragma omp parallel for private(j, f, rSqd, rij)
     for (i = 0; i < N-1; i++) {
         for (j = i+1; j < N; j++) {
             rSqd = 0;
@@ -545,6 +544,7 @@ void computeAccelerations() {
         }
     }
 }
+
 
 
 /*
