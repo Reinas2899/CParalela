@@ -462,9 +462,6 @@ double Kinetic() { //Write Function here!
 /*
 ##############################################################################################################################################
 ORIGINAL
-Código original sem otimizações
-Tempo no PC pessoal = 7,07 seg
-Tempo no cluster Search = 14,26 seg e CPI=0,9
 ##############################################################################################################################################
 /*
 // Function to calculate the potential energy of the system
@@ -537,9 +534,7 @@ void computeAccelerations() {
 
 /*
 ##############################################################################################################################################
-OTIMIZAÇAO - V.1
-Tempo no PC pessoal = 3,88 seg
-Tempo no cluster Search = 6,65 seg e CPI=0,6
+OTIMIZAÇÃO FEITA NO WA1
 ##############################################################################################################################################
 */
 
@@ -632,136 +627,9 @@ void computeAccelerations() {
   }
 }
 
-
 /*
 ##############################################################################################################################################
-OTIMIZAÇAO - V.2
-Código otimizado com a remoção de ciclos 'for' removendo assim várias 
-intruções de 'JUMP'
-Incrementação por blocos
-O output no terminal era igual mas os ficheiros gerados tinham resultados diferentes do esperado
-##############################################################################################################################################
 */
-
-/*
-// Function to calculate the potential energy of the system
-double Potential() {
-  double r2, rnorm, quot, term1, term2, Pot;
-  int i, j, k;
-
-  Pot = 0;
-  for (i = 0; i < N; i+=4) {
-
-    for (j = 0; j < N; j++) {
-      r2 = 0;
-      
-
-      r2 += (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]);
-      r2 += (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]);
-      r2 += (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
-
-      r2 += (r[i+1][0] - r[j+1][0]) * (r[i+1][0] - r[j+1][0]);
-      r2 += (r[i+1][1] - r[j+1][1]) * (r[i+1][1] - r[j+1][1]);
-      r2 += (r[i+1][2] - r[j+1][2]) * (r[i+1][2] - r[j+1][2]);
-
-      r2 += (r[i+2][0] - r[j+2][0]) * (r[i+2][0] - r[j+2][0]);
-      r2 += (r[i+2][1] - r[j+2][1]) * (r[i+2][1] - r[j+2][1]);
-      r2 += (r[i+2][2] - r[j+2][2]) * (r[i+2][2] - r[j+2][2]);
-
-      r2 += (r[i+3][0] - r[j+3][0]) * (r[i+3][0] - r[j+3][0]);
-      r2 += (r[i+3][1] - r[j+3][1]) * (r[i+3][1] - r[j+3][1]);
-      r2 += (r[i+3][2] - r[j+3][2]) * (r[i+3][2] - r[j+3][2]);
-
-      rnorm = r2;
-      
-
-      rnorm = r2 * r2 * r2 * r2 * r2; 
-
-      quot = sigma / rnorm;
-      term1 = quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot * quot; 
-      term2 = quot * quot * quot * quot * quot * quot;
-      Pot += 4 * epsilon * (term1 - term2);
-    }
-  }
-  return Pot;
-}
-
-
-void computeAccelerations() {
-    // igual a OTIMIZAÇAO - V.1
-}
-
-*/
-
-
-/*
-##############################################################################################################################################
-OTIMIZAÇAO - V.3
-Ótimo em tempo de execução
-Péssimo com os outputs
-##############################################################################################################################################
-
-// Optimized Potential function
-double Potential() {
-    double r2, term1, term2, Pot;
-    int i, j, k;
-    const double sigma6 = pow(sigma, 6);
-    const double sigma12 = sigma6 * sigma6;
-
-    Pot = 0.;
-    for (i = 0; i < N-1; i++) {
-        for (j = i+1; j < N; j++) {
-            r2 = 0.;
-            for (k = 0; k < 3; k++) {
-                r2 += (r[i][k] - r[j][k]) * (r[i][k] - r[j][k]);
-            }
-
-            // Avoid sqrt computation by using r^2 directly
-            term1 = sigma12 / pow(r2, 6);
-            term2 = sigma6 / pow(r2, 3);
-            Pot += 4 * epsilon * (term1 - term2);
-        }
-    }
-    return Pot;
-}
-
-// Optimized computeAccelerations function
-void computeAccelerations() {
-    int i, j, k;
-    double f, rSqd, rij[3];  // position of i relative to j
-
-    // Zero accelerations
-    for (i = 0; i < N; i++) {
-        for (k = 0; k < 3; k++) {
-            a[i][k] = 0;
-        }
-    }
-
-    for (i = 0; i < N-1; i++) {
-        for (j = i+1; j < N; j++) {
-            rSqd = 0;
-            for (k = 0; k < 3; k++) {
-                rij[k] = r[i][k] - r[j][k];
-                rSqd += rij[k] * rij[k];
-            }
-
-            // Use r^2 directly to avoid unnecessary math functions
-            double r2inv = 1.0 / rSqd;
-            double r6inv = r2inv * r2inv * r2inv;
-            f = 24.0 * r6inv * (2.0 * r6inv * r6inv - 1.0) * r2inv;
-
-            for (k = 0; k < 3; k++) {
-                a[i][k] += rij[k] * f;
-                a[j][k] -= rij[k] * f;
-            }
-        }
-    }
-}
-*/
-
-
-
-
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 double VelocityVerlet(double dt, int iter, FILE *fp) {

@@ -21,5 +21,5 @@ runseq:
 	./MDseq.exe < inputdata.txt
 
 runpar:
-	sbatch cp.sh
-	#sbatch runpar.sh
+	export OMP_NUM_THREADS=32;
+        ./MDpar.exe < inputdata.txt
