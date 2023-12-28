@@ -1,25 +1,48 @@
-CC     = gcc
-SRC    = src/
-CFLAGS = -pg -Ofast -funroll-all-loops -ftree-vectorize -msse4
+################################################################################
+# Makefile for general code snippets
+#
+# by André Pereira
+################################################################################
+
+SHELL = /bin/sh
+BIN_NAME = MDpar_CUDA
+
+CXX = nvcc
+LD  = nvcc
+
+CXXFLAGS   = -O2 -g -std=c++11 -arch=sm_35 -Wno-deprecated-gpu-targets
+
+SRC_DIR = src
+BIN_DIR = bin
+BUILD_DIR = build
+SRC = $(wildcard $(SRC_DIR)/*.cu)
+OBJ = $(patsubst src/%.cu,build/%.o,$(SRC))
+BIN = $(BIN_NAME)
+
+vpath %.cu $(SRC_DIR)
+
+################################################################################
+# Rules
+################################################################################
 
 .DEFAULT_GOAL = all
 
-all: MDseq.exe MDpar.exe
+$(BUILD_DIR)/%.o: %.cu
+        module load cuda/11.3.1; \
+        $(CXX) -c $(CXXFLAGS) $(INCLUDES) $< -o $@ $(LIBS)
 
-MDseq.exe: $(SRC)/MDseq.cpp
-	module load gcc/11.2.0; \
-	$(CC) $(CFLAGS) $(SRC)MDseq.cpp -lm -o MDseq.exe
+$(BIN_DIR)/$(BIN_NAME): $(OBJ)
+        module load cuda/11.3.1; \
+        $(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(OBJ) $(LIBS)
 
-MDpar.exe: $(SRC)/MDpar.cpp
-	module load gcc/11.2.0; \
-	$(CC) $(CFLAGS) $(SRC)MDpar.cpp -lm -fopenmp -o MDpar.exe
+checkdirs:
+        @mkdir -p $(BUILD_DIR)
+        @mkdir -p $(BIN_DIR)
+
+all: checkdirs $(BIN_DIR)/$(BIN_NAME)
 
 clean:
-	rm ./MD*.exe
+        rm -f $(BUILD_DIR)/* $(BIN_DIR)/*
 
-runseq:
-	./MDseq.exe < inputdata.txt
-
-runpar:
-	export OMP_NUM_THREADS=32; \
-        ./MDpar.exe < inputdata.txt
+run:
+        sbatch run.sh
