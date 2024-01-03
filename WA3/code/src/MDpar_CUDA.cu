@@ -28,7 +28,6 @@
 #include<math.h>
 #include<string.h>
 #include<time.h>
-#include <omp.h>
 
 
 // Number of particles
@@ -474,9 +473,11 @@ OTIMIZAÇAO COM CUDA v1
 ##############################################################################################################################################
 */
 
-#include <cuda_runtime.h>
 #include <cuda.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
+/*
 
 // Declaration for the CUDA kernel
 //extern "C" void computeForcesAndPotentialKernel(double *pos, double *force, double *pot, int N, double L, double epsilon, double sigma);
@@ -571,6 +572,98 @@ void computeAccelerations_Potencial_Nossa() {
     delete[] flattened_r;
 }
 
+*/
+
+/*
+##############################################################################################################################################
+OTIMIZAÇAO COM CUDA v2
+##############################################################################################################################################
+*/
+
+
+union DoubleToULL {
+    double d;
+    unsigned long long ull;
+};
+
+__device__ double atomicAdd_double(double* address, double val) {
+    DoubleToULL* addressAsULL = (DoubleToULL*)address;
+    unsigned long long old = addressAsULL->ull, assumed;
+    do {
+        assumed = old;
+        DoubleToULL newVal;
+        newVal.d = val + *address;
+        old = atomicCAS((unsigned long long*)address, assumed, newVal.ull);
+    } while (assumed != old);
+    return assumed;
+}
+
+__global__ void computeAccelerations_Potencial_Nossa_kernel(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j, k;
+
+    if (i < N) {
+        double Pot = 0.0;
+        double quatro_vezes_epsilon = 4.0 * epsilon;
+
+        for (j = 0; j < N; j++) {
+            if (i != j) {
+                double rSqd = 0.0;
+                double rij[3];
+
+                for (k = 0; k < 3; k++) {
+                    rij[k] = r[i * 3 + k] - r[j * 3 + k];
+                    rSqd += rij[k] * rij[k];
+                }
+
+                double invrSqd = sigma / rSqd;
+                double invrSqd3 = invrSqd * invrSqd * invrSqd;
+
+                double invrSqd6 = invrSqd3 * invrSqd3;
+                Pot += (quatro_vezes_epsilon * (invrSqd6 - invrSqd3)) * 2.0;
+
+                double f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
+
+                atomicAdd_double(&a[i * 3], rij[0] * f);
+                atomicAdd_double(&a[i * 3 + 1], rij[1] * f);
+                atomicAdd_double(&a[i * 3 + 2], rij[2] * f);
+            }
+        }
+        atomicAdd_double(PE, Pot);
+    }
+}
+
+void computeAccelerations_Potencial_Nossa() {
+    // Configurar parâmetros de lançamento do kernel
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Alocar memória na GPU
+    double *d_r, *d_a, *d_PE;
+    cudaMalloc((void**)&d_r, N * 3 * sizeof(double));
+    cudaMalloc((void**)&d_a, N * 3 * sizeof(double));
+    cudaMalloc((void**)&d_PE, sizeof(double));
+
+    // Copiar dados para a GPU
+    cudaMemcpy(d_r, r, N * 3 * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemset(d_a, 0, N * 3 * sizeof(double));
+    cudaMemset(d_PE, 0, sizeof(double));
+
+    // Chamar o kernel CUDA
+    computeAccelerations_Potencial_Nossa_kernel<<<blocksPerGrid, threadsPerBlock>>>(N, epsilon, sigma, L, d_PE, d_r, d_a);
+
+    // Copiar resultados de volta para a CPU
+    cudaMemcpy(a, d_a, N * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&PE, d_PE, sizeof(double), cudaMemcpyDeviceToHost);
+
+    // Liberar memória na GPU
+    cudaFree(d_r);
+    cudaFree(d_a);
+    cudaFree(d_PE);
+}
+
+
+
 /*
 ##############################################################################################################################################
 */
@@ -578,7 +671,7 @@ void computeAccelerations_Potencial_Nossa() {
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 double VelocityVerlet(double dt, int iter, FILE *fp) {
-    int i, j, k;
+    int i, j;
     
     double psum = 0.;
     

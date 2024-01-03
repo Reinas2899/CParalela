@@ -28,10 +28,12 @@ vpath %.cu $(SRC_DIR)
 .DEFAULT_GOAL = all
 
 $(BUILD_DIR)/%.o: %.cu
+        module load gcc/7.2.0; \
         module load cuda/11.3.1; \
         $(CXX) -c $(CXXFLAGS) $(INCLUDES) $< -o $@ $(LIBS)
 
 $(BIN_DIR)/$(BIN_NAME): $(OBJ)
+        module load gcc/7.2.0; \
         module load cuda/11.3.1; \
         $(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(OBJ) $(LIBS)
 
