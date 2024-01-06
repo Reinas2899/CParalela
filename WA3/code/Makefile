@@ -28,12 +28,10 @@ vpath %.cu $(SRC_DIR)
 .DEFAULT_GOAL = all
 
 $(BUILD_DIR)/%.o: %.cu
-        module load gcc/7.2.0; \
         module load cuda/11.3.1; \
         $(CXX) -c $(CXXFLAGS) $(INCLUDES) $< -o $@ $(LIBS)
 
 $(BIN_DIR)/$(BIN_NAME): $(OBJ)
-        module load gcc/7.2.0; \
         module load cuda/11.3.1; \
         $(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(OBJ) $(LIBS)
 
@@ -47,4 +45,6 @@ clean:
         rm -f $(BUILD_DIR)/* $(BIN_DIR)/*
 
 run:
-        sbatch run.sh
+        module load gcc/7.2.0; \
+        module load cuda/11.3.1; \
+        sbatch --partition cpar --constraint=k20 --ntasks=1 --time=5:00 ./run.sh

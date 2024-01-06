@@ -470,12 +470,9 @@ double Kinetic() { //Write Function here!
 /*
 ##############################################################################################################################################
 OTIMIZAÇAO COM CUDA v1
+todos os valores de output ficam aproximações dos de referencia mas o tempo é muito bom - 2 seg
 ##############################################################################################################################################
 */
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
 
 /*
 
@@ -577,8 +574,13 @@ void computeAccelerations_Potencial_Nossa() {
 /*
 ##############################################################################################################################################
 OTIMIZAÇAO COM CUDA v2
+todos os valores de output ficam corretos mas o tempo é muito fraquinho - 8.40 seg
 ##############################################################################################################################################
 */
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 
 union DoubleToULL {
@@ -586,6 +588,10 @@ union DoubleToULL {
     unsigned long long ull;
 };
 
+
+/*
+Adaptação da função do CUDA atomicAdd 
+*/
 __device__ double atomicAdd_double(double* address, double val) {
     DoubleToULL* addressAsULL = (DoubleToULL*)address;
     unsigned long long old = addressAsULL->ull, assumed;
@@ -620,7 +626,7 @@ __global__ void computeAccelerations_Potencial_Nossa_kernel(int N, double epsilo
                 double invrSqd3 = invrSqd * invrSqd * invrSqd;
 
                 double invrSqd6 = invrSqd3 * invrSqd3;
-                Pot += (quatro_vezes_epsilon * (invrSqd6 - invrSqd3)) * 2.0;
+                Pot += (quatro_vezes_epsilon * (invrSqd6 - invrSqd3));
 
                 double f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
 
