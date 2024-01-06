@@ -578,31 +578,11 @@ todos os valores de output ficam corretos mas o tempo é muito fraquinho - 8.40 
 ##############################################################################################################################################
 */
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-
-
-union DoubleToULL {
-    double d;
-    unsigned long long ull;
-};
-
-
 /*
-Adaptação da função do CUDA atomicAdd 
-*/
-__device__ double atomicAdd_double(double* address, double val) {
-    DoubleToULL* addressAsULL = (DoubleToULL*)address;
-    unsigned long long old = addressAsULL->ull, assumed;
-    do {
-        assumed = old;
-        DoubleToULL newVal;
-        newVal.d = val + *address;
-        old = atomicCAS((unsigned long long*)address, assumed, newVal.ull);
-    } while (assumed != old);
-    return assumed;
-}
+
+
+//Esta função é uma adaptação da função computeAccelerations_Potencial_Nossa desenvolvida na versão corrigida do WA2 (ver ficheiro MDpar_OPENMP_wa2_corrigido.cpp).
+//Basicamente faz os mesmos calculos mas num ambiente kernel em CUDA.
 
 __global__ void computeAccelerations_Potencial_Nossa_kernel(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -638,7 +618,106 @@ __global__ void computeAccelerations_Potencial_Nossa_kernel(int N, double epsilo
         atomicAdd_double(PE, Pot);
     }
 }
+*/
 
+/*
+##############################################################################################################################################
+OTIMIZAÇAO COM CUDA v3
+todos os valores de output ficam corretos e o tempo é bastante bom - 4.30 seg
+##############################################################################################################################################
+*/
+
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+
+
+union DoubleToULL {
+    double d;
+    unsigned long long ull;
+};
+
+
+/*
+Esta função é uma adaptação da função atomicAdd para números de ponto flutuante de precisão dupla (double) em um ambiente CUDA. 
+A função utiliza operações atômicas para garantir que a adição seja realizada de maneira segura, sem que outras threads interfiram durante a operação.
+
+A função usa uma estrutura DoubleToULL para interpretar o valor do ponto flutuante double como um número inteiro sem sinal de 64 bits (unsigned long long). 
+Isso é necessário porque as operações atómicas em CUDA geralmente trabalham com tipos de dados integrais.
+
+A lógica da função é a seguinte:
+    - Converte o endereço do ponteiro double para um ponteiro unsigned long long (64 bits).
+    - Lê o valor atual no endereço e armazena-o em old.
+    - Realiza uma operação atomicCAS (Compare-And-Swap) para trocar o valor no endereço apenas se o valor atual (old) for igual ao valor esperado (também old). 
+    - O novo valor é calculado adicionando o valor desejado (val) ao valor atual (*address).
+    - Se a troca for bem-sucedida, a função retorna o valor antigo (old); caso contrário, repete o processo até que a troca seja bem-sucedida.
+
+*/
+__device__ double atomicAdd_double(double* address, double val) {
+    DoubleToULL* addressAsULL = (DoubleToULL*)address;
+    unsigned long long old = addressAsULL->ull, assumed;
+    do {
+        assumed = old;
+        DoubleToULL newVal;
+        newVal.d = val + *address;
+        old = atomicCAS((unsigned long long*)address, assumed, newVal.ull);
+    } while (assumed != old);
+    return assumed;
+}
+
+
+/*
+Esta função é uma adaptação da função computeAccelerations_Potencial_Nossa desenvolvida na versão corrigida do WA2 (ver ficheiro MDpar_OPENMP_wa2_corrigido.cpp).
+Basicamente faz os mesmos calculos (com algumas adaptações) mas num ambiente kernel em CUDA.
+*/
+__global__ void computeAccelerations_Potencial_Nossa_kernel_2(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j, k;
+
+    if (i < N) {
+        double Pot = 0.0;
+        double quatro_vezes_epsilon = 4.0 * epsilon;
+        double localA[3] = {0.0};
+
+        for (j = 0; j < N; j++) {
+            if (i != j) {
+                double rSqd = 0.0;
+                double rij[3];
+
+                for (k = 0; k < 3; k++) {
+                    rij[k] = r[i * 3 + k] - r[j * 3 + k];
+                    rSqd += rij[k] * rij[k];
+                }
+
+                double invrSqd = sigma / rSqd;
+                double invrSqd3 = invrSqd * invrSqd * invrSqd;
+
+                double invrSqd6 = invrSqd3 * invrSqd3;
+                Pot += (quatro_vezes_epsilon * (invrSqd6 - invrSqd3));
+
+                double f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
+
+                // Redução local para o vetor de aceleração
+                localA[0] += rij[0] * f;
+                localA[1] += rij[1] * f;
+                localA[2] += rij[2] * f;
+            }
+        }
+
+        // Atualização do vetor de aceleração
+        atomicAdd_double(&a[i * 3], localA[0]);
+        atomicAdd_double(&a[i * 3 + 1], localA[1]);
+        atomicAdd_double(&a[i * 3 + 2], localA[2]);
+
+        // Operação atomicAdd única para o potencial total
+        atomicAdd_double(PE, Pot);
+    }
+}
+
+/*
+Esta função faz as alocações de memória necessárias para a utilização do kernel
+*/
 void computeAccelerations_Potencial_Nossa() {
     // Configurar parâmetros de lançamento do kernel
     int threadsPerBlock = 256;
@@ -656,7 +735,7 @@ void computeAccelerations_Potencial_Nossa() {
     cudaMemset(d_PE, 0, sizeof(double));
 
     // Chamar o kernel CUDA
-    computeAccelerations_Potencial_Nossa_kernel<<<blocksPerGrid, threadsPerBlock>>>(N, epsilon, sigma, L, d_PE, d_r, d_a);
+    computeAccelerations_Potencial_Nossa_kernel_2<<<blocksPerGrid, threadsPerBlock>>>(N, epsilon, sigma, L, d_PE, d_r, d_a);
 
     // Copiar resultados de volta para a CPU
     cudaMemcpy(a, d_a, N * 3 * sizeof(double), cudaMemcpyDeviceToHost);
@@ -667,7 +746,6 @@ void computeAccelerations_Potencial_Nossa() {
     cudaFree(d_a);
     cudaFree(d_PE);
 }
-
 
 
 /*
