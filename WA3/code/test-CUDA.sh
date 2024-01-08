@@ -3,15 +3,15 @@
 #SBATCH --partition=cpar
 #SBATCH --constraint=k20
 
-nvprof ./bin/MDpar_CUDA < inputdata.txt
-
-threads=(1 2 4 8 16 32 40)
+num_particulas=(5500 5600 6000 7000 8000)
 
 
-for nthreads in "${threads[@]}"
+for num in "${num_particulas[@]}"
 do
-        export OMP_NUM_THREADS=${nthreads}
-        echo How many threads? ${OMP_NUM_THREADS}
-        time `./MDpar.exe <inputdata.txt >lixo`
+        module load gcc/7.2.0
+        module load cuda/11.3.1
+        echo How many particules? ${num}
+        export GLOBAL_VARIABLE_VALUE=${num}
+        srun --partition=cpar perf stat -e instructions,cycles nvprof ./bin/MDpar_CUDA < inputdata.txt
         echo -e "\n"
 done

@@ -8,7 +8,7 @@ all: MDseq.exe MDpar.exe
 
 MDseq.exe: $(SRC)/MDseq.cpp
 	module load gcc/11.2.0; \
-	$(CC) $(CFLAGS) $(SRC)MDseq.cpp -lm -o MDseq.exe
+	$(CC) $(CFLAGS) $(SRC)MDpar_OPENMP_wa2_corrigido.cpp -lm -o MDseq.exe
 
 MDpar.exe: $(SRC)/MDpar.cpp
 	module load gcc/11.2.0; \

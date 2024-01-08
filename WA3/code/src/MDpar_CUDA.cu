@@ -28,6 +28,8 @@
 #include<math.h>
 #include<string.h>
 #include<time.h>
+#include <cstdlib>
+#include <iostream>
 
 
 // Number of particles
@@ -50,7 +52,7 @@ double L;
 double Tinit;  //2;
 //  Vectors!
 //
-const int MAXPART=5001;
+const int MAXPART=50001;
 //  Position
 double r[MAXPART][3];
 //  Velocity
@@ -90,6 +92,20 @@ void computeAccelerations_Potencial_Nossa();
 
 int main()
 {
+
+    const char* globalVariableValue = std::getenv("GLOBAL_VARIABLE_VALUE");
+
+
+     // Verifica se a variável de ambiente foi definida
+    if (globalVariableValue != nullptr) {
+        printf("Particles = '%s'\n",globalVariableValue);
+        N = atoi(globalVariableValue);
+    } 
+    else{
+        N = 5000;
+    }
+
+
     clock_t start = clock();
     //  variable delcarations
     int i;
@@ -218,7 +234,7 @@ int main()
     
     scanf("%lf",&rho);
     
-    N = 5000;
+    //N = 5000;
     Vol = N/(rho*NA);
     
     Vol /= VolFac;
