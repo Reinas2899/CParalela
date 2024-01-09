@@ -14,7 +14,10 @@ for num in "${num_particulas[@]}"
 do
         module load gcc/7.2.0
         module load cuda/11.3.1
+        echo "-------------------------------------------------------------------------"
         echo How many particules? ${num}
+        echo "-------------------------------------------------------------------------"
+        echo -e "\n"
         export GLOBAL_N_VALUE=${num}
         srun --partition=cpar perf stat -e instructions,cycles nvprof ./bin/MDpar_CUDA < inputdata.txt
         echo -e "\n"

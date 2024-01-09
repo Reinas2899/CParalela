@@ -87,7 +87,7 @@ double Kinetic();
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
 // and Compute total potential energy from particle coordinates
-void computeAccelerations_Potencial_Nossa();
+void computeAccelerations_Potencial();
 
 int main()
 {
@@ -277,7 +277,7 @@ int main()
     //  mass, and this will allow us to update their positions via Newton's law
     //computeAccelerations();
 
-    computeAccelerations_Potencial_Nossa();
+    computeAccelerations_Potencial();
     
     
     // Print number of particles to the trajectory file
@@ -560,7 +560,7 @@ Junção de Potential() com computeAccelerations()
 ##############################################################################################################################################
 */
 
-void computeAccelerations_Potencial_Nossa() {
+void computeAccelerations_Potencial() {
 
     double Pot;
     int i, j, k;
@@ -638,7 +638,7 @@ double VelocityVerlet(double dt, int iter, FILE *fp) {
     //  Update accellerations from updated positions
     //computeAccelerations();
 
-    computeAccelerations_Potencial_Nossa();
+    computeAccelerations_Potencial();
 
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {

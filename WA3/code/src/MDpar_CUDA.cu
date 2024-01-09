@@ -91,7 +91,7 @@ double Kinetic();
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
 // and Compute total potential energy from particle coordinates
-void computeAccelerations_Potencial_Nossa();
+void computeAccelerations_Potencial();
 
 int main()
 {
@@ -99,7 +99,7 @@ int main()
     const char* globalNValue = std::getenv("GLOBAL_N_VALUE");
     const char* globalThreadValue = std::getenv("GLOBAL_THREAD_VALUE");
 
-
+    
     // Verifica se a variável de ambiente N foi definida
     if (globalNValue != nullptr) {
         printf("Particles = '%s'\n",globalNValue);
@@ -108,14 +108,16 @@ int main()
     else{
         N = 5000;
     }
+ 
 
-    // Verifica se a variável de ambiente foi definida
+    // Verifica se a variável de ambiente THREAD foi definida
     if (globalThreadValue != nullptr) {
-        printf("How many threads per block = '%s'\n",globalThreadValue);
+        printf("Threads per block = '%s'\n",globalThreadValue);
         tpb = atoi(globalThreadValue);
     } 
     else{
-        tpb = 256;
+        //tpb = 256;
+        tpb = 288; // ideal thread value obtained with testing
     }
 
 
@@ -305,7 +307,7 @@ int main()
     //  mass, and this will allow us to update their positions via Newton's law
     //computeAccelerations();
 
-    computeAccelerations_Potencial_Nossa();
+    computeAccelerations_Potencial();
     
     
     // Print number of particles to the trajectory file
@@ -397,6 +399,7 @@ int main()
     fclose(afp);
     
     printf("Time taken: %.2fs\n", (double)(clock() - start)/CLOCKS_PER_SEC);
+    printf("Threads per block = '%d'\n",tpb);
 
     return 0;
 }
@@ -496,162 +499,10 @@ double Kinetic() { //Write Function here!
 }
 
 
-/*
-##############################################################################################################################################
-OTIMIZAÇAO COM CUDA v1
-todos os valores de output ficam aproximações dos de referencia mas o tempo é muito bom - 2 seg
-##############################################################################################################################################
-*/
-
-/*
-
-// Declaration for the CUDA kernel
-//extern "C" void computeForcesAndPotentialKernel(double *pos, double *force, double *pot, int N, double L, double epsilon, double sigma);
-__global__ void computeForcesAndPotentialKernel(double *pos, double *force, double *pot, int N, double L, double epsilon, double sigma) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < N) {
-        double fx = 0.0, fy = 0.0, fz = 0.0, pot_i = 0.0;
-        for (int j = 0; j < N; j++) {
-            if (i != j) {
-                // Compute the distance between particles i and j
-                double dx = pos[i*3] - pos[j*3];
-                double dy = pos[i*3 + 1] - pos[j*3 + 1];
-                double dz = pos[i*3 + 2] - pos[j*3 + 2];
-
-                // Apply periodic boundary conditions
-                dx -= L * round(dx / L);
-                dy -= L * round(dy / L);
-                dz -= L * round(dz / L);
-
-                double r2 = dx * dx + dy * dy + dz * dz;
-                double invrSqd = sigma / r2;
-                double invrSqd3 = invrSqd * invrSqd * invrSqd;
-                double invrSqd6 = invrSqd3 * invrSqd3;
-
-                // Lennard-Jones potential calculations
-                double f = 24.0 * epsilon * (2.0 * invrSqd6 - invrSqd3) / r2;
-                pot_i += 4.0 * epsilon * (invrSqd6 - invrSqd3);
-
-                fx += f * dx;
-                fy += f * dy;
-                fz += f * dz;
-            }
-        }
-        force[i * 3] = fx;
-        force[i * 3 + 1] = fy;
-        force[i * 3 + 2] = fz;
-        pot[i] = pot_i;
-    }
-}
-
-// Host function to interface with the CUDA kernel
-void computeForcesAndPotentialCUDA(double *pos, double *force, double *pot, int N, double L, double epsilon, double sigma) {
-
-    double *d_pos, *d_force, *d_pot;
-
-    cudaMalloc((void**)&d_pos, N * 3 * sizeof(double));
-    cudaMalloc((void**)&d_force, N * 3 * sizeof(double));
-    cudaMalloc((void**)&d_pot, N * sizeof(double));
-
-    cudaMemcpy(d_pos, pos, N * 3 * sizeof(double), cudaMemcpyHostToDevice);
-
-    int blockSize = 256; // Example block size, may need adjustment
-    int numBlocks = (N + blockSize - 1) / blockSize;
-    computeForcesAndPotentialKernel<<<numBlocks, blockSize>>>(d_pos, d_force, d_pot, N, L, epsilon, sigma);
-
-    cudaMemcpy(force, d_force, N * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(pot, d_pot, N * sizeof(double), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_pos);
-    cudaFree(d_force);
-    cudaFree(d_pot);
-}
-
-void computeAccelerations_Potencial_Nossa() {
-    double *forces = new double[3 * N];
-    double *potentials = new double[N];
-    double totalPotential = 0.0;
-
-
-    double *flattened_r = new double[3 * N];
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < 3; j++) {
-            flattened_r[i * 3 + j] = r[i][j];
-        }
-    }
-
-    // Assuming 'r', 'N', 'L', 'epsilon', 'sigma', and 'm' are defined and accessible
-    computeForcesAndPotentialCUDA(flattened_r, forces, potentials, N, L, epsilon, sigma);
-
-    // Convert forces to accelerations and accumulate total potential energy
-    for (int i = 0; i < N; i++) {
-        a[i][0] = forces[i * 3] / m; // Assuming 'm' is the mass of particles
-        a[i][1] = forces[i * 3 + 1] / m;
-        a[i][2] = forces[i * 3 + 2] / m;
-        totalPotential += potentials[i];
-    }
-
-    PE = totalPotential; // Update the total potential energy
-
-    delete[] forces;
-    delete[] potentials;
-    delete[] flattened_r;
-}
-
-*/
 
 /*
 ##############################################################################################################################################
-OTIMIZAÇAO COM CUDA v2
-todos os valores de output ficam corretos mas o tempo é muito fraquinho - 8.40 seg
-##############################################################################################################################################
-*/
-
-/*
-
-
-//Esta função é uma adaptação da função computeAccelerations_Potencial_Nossa desenvolvida na versão corrigida do WA2 (ver ficheiro MDpar_OPENMP_wa2_corrigido.cpp).
-//Basicamente faz os mesmos calculos mas num ambiente kernel em CUDA.
-
-__global__ void computeAccelerations_Potencial_Nossa_kernel(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int j, k;
-
-    if (i < N) {
-        double Pot = 0.0;
-        double quatro_vezes_epsilon = 4.0 * epsilon;
-
-        for (j = 0; j < N; j++) {
-            if (i != j) {
-                double rSqd = 0.0;
-                double rij[3];
-
-                for (k = 0; k < 3; k++) {
-                    rij[k] = r[i * 3 + k] - r[j * 3 + k];
-                    rSqd += rij[k] * rij[k];
-                }
-
-                double invrSqd = sigma / rSqd;
-                double invrSqd3 = invrSqd * invrSqd * invrSqd;
-
-                double invrSqd6 = invrSqd3 * invrSqd3;
-                Pot += (quatro_vezes_epsilon * (invrSqd6 - invrSqd3));
-
-                double f = 24.0 * (invrSqd3 * invrSqd) * (2.0 * invrSqd3 - 1.0);
-
-                atomicAdd_double(&a[i * 3], rij[0] * f);
-                atomicAdd_double(&a[i * 3 + 1], rij[1] * f);
-                atomicAdd_double(&a[i * 3 + 2], rij[2] * f);
-            }
-        }
-        atomicAdd_double(PE, Pot);
-    }
-}
-*/
-
-/*
-##############################################################################################################################################
-OTIMIZAÇAO COM CUDA v3
+OTIMIZAÇAO COM CUDA
 todos os valores de output ficam corretos e o tempo é bastante bom - 4.30 seg
 ##############################################################################################################################################
 */
@@ -697,10 +548,10 @@ __device__ double atomicAdd_double(double* address, double val) {
 
 
 /*
-Esta função é uma adaptação da função computeAccelerations_Potencial_Nossa desenvolvida na versão corrigida do WA2 (ver ficheiro MDpar_OPENMP_wa2_corrigido.cpp).
+Esta função é uma adaptação da função computeAccelerations_Potencial desenvolvida na versão corrigida do WA2 (ver ficheiro MDpar_OPENMP_wa2_corrigido.cpp).
 Basicamente faz os mesmos calculos (com algumas adaptações) mas num ambiente kernel em CUDA.
 */
-__global__ void computeAccelerations_Potencial_Nossa_kernel_2(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
+__global__ void computeAccelerations_Potencial_KERNEL(int N, double epsilon, double sigma, double L, double* PE, double* r, double* a) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j, k;
 
@@ -747,7 +598,7 @@ __global__ void computeAccelerations_Potencial_Nossa_kernel_2(int N, double epsi
 /*
 Esta função faz as alocações de memória necessárias para a utilização do kernel
 */
-void computeAccelerations_Potencial_Nossa() {
+void computeAccelerations_Potencial() {
     // Configurar parâmetros de lançamento do kernel
     //int threadsPerBlock = 256;
     int threadsPerBlock = tpb;
@@ -765,7 +616,7 @@ void computeAccelerations_Potencial_Nossa() {
     cudaMemset(d_PE, 0, sizeof(double));
 
     // Chamar o kernel CUDA
-    computeAccelerations_Potencial_Nossa_kernel_2<<<blocksPerGrid, threadsPerBlock>>>(N, epsilon, sigma, L, d_PE, d_r, d_a);
+    computeAccelerations_Potencial_KERNEL<<<blocksPerGrid, threadsPerBlock>>>(N, epsilon, sigma, L, d_PE, d_r, d_a);
 
     // Copiar resultados de volta para a CPU
     cudaMemcpy(a, d_a, N * 3 * sizeof(double), cudaMemcpyDeviceToHost);
@@ -806,7 +657,7 @@ double VelocityVerlet(double dt, int iter, FILE *fp) {
     //  Update accellerations from updated positions
     //computeAccelerations();
 
-    computeAccelerations_Potencial_Nossa();
+    computeAccelerations_Potencial();
 
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
