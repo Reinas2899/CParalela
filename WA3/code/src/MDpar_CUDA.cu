@@ -35,6 +35,9 @@
 // Number of particles
 int N;
 
+// Number of threads per block in kernel
+int tpb;
+
 //  Lennard-Jones parameters in natural units!
 double PE;
 double sigma = 1.;
@@ -93,16 +96,26 @@ void computeAccelerations_Potencial_Nossa();
 int main()
 {
 
-    const char* globalVariableValue = std::getenv("GLOBAL_VARIABLE_VALUE");
+    const char* globalNValue = std::getenv("GLOBAL_N_VALUE");
+    const char* globalThreadValue = std::getenv("GLOBAL_THREAD_VALUE");
 
 
-     // Verifica se a variável de ambiente foi definida
-    if (globalVariableValue != nullptr) {
-        printf("Particles = '%s'\n",globalVariableValue);
-        N = atoi(globalVariableValue);
+    // Verifica se a variável de ambiente N foi definida
+    if (globalNValue != nullptr) {
+        printf("Particles = '%s'\n",globalNValue);
+        N = atoi(globalNValue);
     } 
     else{
         N = 5000;
+    }
+
+    // Verifica se a variável de ambiente foi definida
+    if (globalThreadValue != nullptr) {
+        printf("How many threads per block = '%s'\n",globalThreadValue);
+        tpb = atoi(globalThreadValue);
+    } 
+    else{
+        tpb = 256;
     }
 
 
@@ -736,7 +749,8 @@ Esta função faz as alocações de memória necessárias para a utilização do
 */
 void computeAccelerations_Potencial_Nossa() {
     // Configurar parâmetros de lançamento do kernel
-    int threadsPerBlock = 256;
+    //int threadsPerBlock = 256;
+    int threadsPerBlock = tpb;
     int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
 
     // Alocar memória na GPU
